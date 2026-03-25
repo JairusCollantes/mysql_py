@@ -43,6 +43,7 @@ INSERT INTO songs (title, channel, is_original, duration, playlist_id) VALUES
 ('See Tinh (Remix)', 'Cukak', FALSE, 4.17, 3),
 ('Ai Đưa Em Về', 'TIA', TRUE, 3.50, 3);
 
+SELECT * FROM songs;
 
 UPDATE songs
 SET duration = 3.00
