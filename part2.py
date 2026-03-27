@@ -1,208 +1,290 @@
 import mysql.connector
-from mysql.connector import errorcode
+from dotenv import load_dotenv
 import os
 
-# Connection
-def connect():
-    try:
-        con = mysql.connector.connect(user='root', password='jairus', host='localhost', database='Sale')
-        print('Connection successful')
-        return con
-    except mysql.connector.Error as err:
-        if err.errno == errorcode.ER_ACCESS_DENIED_ERROR:
-            print("Something is wrong with your user name or password")
-        elif err.errno == errorcode.ER_BAD_DB_ERROR:
-            print("Database does not exist")
-        else:
+load_dotenv()
+
+
+class PlaylistDB:
+    def __init__(self):
+        self.con = None
+
+    def connect(self):
+        try:
+            self.con = mysql.connector.connect(
+                host=os.getenv('DB_HOST'),
+                user=os.getenv('DB_USER'),
+                password=os.getenv('DB_PASSWORD'),
+                database=os.getenv('DB_NAME')
+            )
+            print("Connection successful")
+        except Exception as err:
+            print("Connection error:", err)
+
+    # ---------------- PLAYLIST ---------------- #
+
+    def add_playlist(self):
+        try:
+            name = input("Playlist Name: ")
+            desc = input("Description: ")
+
+            cursor = self.con.cursor()
+            sql = "INSERT INTO playlists (name, description) VALUES (%s, %s)"
+            cursor.execute(sql, (name, desc))
+            self.con.commit()
+
+            print("Playlist added")
+            cursor.close()
+
+        except Exception as err:
             print(err)
-           
 
-#Insert Record
-def add(con):
-    try:
-        while True:
-            code = input('Enter Product Code : ')
-            name = input('Enter Product Name : ')
-            price = float(input('Enter Product Price : '))
+    def view_playlists(self):
+        try:
+            cursor = self.con.cursor()
+            cursor.execute("SELECT * FROM playlists")
 
-            # Execute SQL
-            cursor = con.cursor()
-            sql = "Insert Into tblProduct Values ('%s', '%s', '%f')" % (code, name, price)
-
-            # Insert new Product
-            #cursor.execute("Insert Into tblProduct (Code, Name, Price) Values ('%s', '%s', '%f')" % (code, name, price))
-            cursor.execute(sql)
-            con.commit()
-
-            print('Record save')
-            x = input("Do you want to add another record [y/n]? ")
-            if x == 'y':
-                os.system('cls')
-                continue
-            else:
-                break
-
-    except mysql.connector.Error as err:
-            print(err)
-           
-    else:
-        cursor.close()
-        con.close()
-
-#Delete Record
-def delete (con):
-    try:
-        while True:
-            code = input('Enter Product Code : ')
-
-            # Execute SQL
-            cursor = con.cursor()
-            sql = "Delete From tblProduct Where Code = '%s'" % code
-            cursor.execute(sql)
-            con.commit()
-
-            print('Record deleted')
-            x = input("Do you want to delete another record [y/n]? ")
-            if x == 'y':
-                os.system('cls')
-                continue
-            else:
-                break
-
-    except mysql.connector.Error as err:
-        print(err)
-       
-    else:
-        cursor.close()
-        con.close()
-
-#Edit Record
-def edit(con):
-    try:
-        while True:
-            code = input('Enter Product Code : ')
-            name = input('Enter Product Name : ')
-            price = float(input('Enter Product Price : '))
-
-            # Execute SQL
-            cursor = con.cursor()
-            sql = "Update tblProduct Set Name = '%s', Price = '%f' Where Code = '%s'" % (name, price, code)
-            cursor.execute(sql)
-            con.commit()
-
-            print('Changes save')
-            x = input("Do you want to edit another record [y/n]? ")
-            if x == 'y':
-                os.system('cls')
-                continue
-            else:
-                break
-
-    except mysql.connector.Error as err:
-            print(err)
-            
-    else:
-        cursor.close()
-        con.close()
-
-
-#Search Record
-def search(con):
-    try:
-        while True:
-            code = input('Enter Product Code : ')
-
-            # Executing SQL-DML Commands
-            cursor = con.cursor()
-            query = "Select * From tblProduct Where Code ='%s'" % code
-
-            # Search Product
-            cursor.execute(query)
-            row = cursor.fetchone()
-            if row is not None:
-                print('Product Name :', row[1])
-                print('Product Price', row[2])
-            else:
-                print("Record not found")
-
-            x = input("Do you want to search another record [y/n]? ")
-            if x == 'y':
-                os.system('cls')
-                continue
-            else:
-                break
-
-    except mysql.connector.Error as err:
-            print(err)
-            
-    else:
-        cursor.close()
-        con.close()
-
-#Retrive all records
-def searchAll(con):
-    try:
-            # Executing SQL-DML Commands
-            cursor = con.cursor()
-            query = "Select * From tblProduct"
-            cursor.execute(query)
             for row in cursor:
-                print("Product Code : ", row[0])
-                print("Product Name : ", row[1])
-                print("Product Price : ", row[2], "\n")
+                print(f"ID: {row[0]} | Name: {row[1]} | Desc: {row[2]}")
 
-    except mysql.connector.Error as err:
+            cursor.close()
+
+        except Exception as err:
             print(err)
-            
-    else:
-        cursor.close()
-        con.close()
-    
+
+    def edit_playlist(self):
+        try:
+            pid = input("Playlist ID: ")
+            name = input("New Name: ")
+            desc = input("New Description: ")
+
+            cursor = self.con.cursor()
+            sql = "UPDATE playlists SET name=%s, description=%s WHERE playlist_id=%s"
+            cursor.execute(sql, (name, desc, pid))
+            self.con.commit()
+
+            print("Playlist updated")
+            cursor.close()
+
+        except Exception as err:
+            print(err)
+
+    def delete_playlist(self):
+        try:
+            pid = input("Playlist ID: ")
+
+            cursor = self.con.cursor()
+            cursor.execute("DELETE FROM playlists WHERE playlist_id=%s", (pid,))
+            self.con.commit()
+
+            print("Playlist deleted")
+            cursor.close()
+
+        except Exception as err:
+            print(err)
+
+    # ---------------- SONGS ---------------- #
+
+    def add_song(self):
+        try:
+            title = input("Title: ")
+            channel = input("Artist/Channel: ")
+            original = input("Is Original (y/n): ").lower() == 'y'
+            duration = float(input("Duration: "))
+            playlist_id = input("Playlist ID: ")
+
+            cursor = self.con.cursor()
+            sql = """
+            INSERT INTO songs (title, channel, is_original, duration, playlist_id)
+            VALUES (%s, %s, %s, %s, %s)
+            """
+            cursor.execute(sql, (title, channel, original, duration, playlist_id))
+            self.con.commit()
+
+            print("Song added")
+            cursor.close()
+
+        except Exception as err:
+            print(err)
+
+    def view_songs(self):
+        try:
+            cursor = self.con.cursor()
+
+            query = """
+            SELECT s.song_id, s.title, s.channel, s.is_original, s.duration, p.name
+            FROM songs s
+            JOIN playlists p ON s.playlist_id = p.playlist_id
+            """
+
+            cursor.execute(query)
+
+            for row in cursor:
+                print(f"""
+ID: {row[0]}
+Title: {row[1]}
+Artist: {row[2]}
+Original: {row[3]}
+Duration: {row[4]}
+Playlist: {row[5]}
+-----------------------
+""")
+
+            cursor.close()
+
+        except Exception as err:
+            print(err)
+
+    def edit_song(self):
+        try:
+            sid = input("Song ID: ")
+            title = input("Title: ")
+            channel = input("Artist: ")
+            original = input("Original (y/n): ").lower() == 'y'
+            duration = float(input("Duration: "))
+
+            cursor = self.con.cursor()
+            sql = """
+            UPDATE songs 
+            SET title=%s, channel=%s, is_original=%s, duration=%s 
+            WHERE song_id=%s
+            """
+            cursor.execute(sql, (title, channel, original, duration, sid))
+            self.con.commit()
+
+            print("Song updated")
+            cursor.close()
+
+        except Exception as err:
+            print(err)
+
+    def delete_song(self):
+        try:
+            sid = input("Song ID: ")
+
+            cursor = self.con.cursor()
+            cursor.execute("DELETE FROM songs WHERE song_id=%s", (sid,))
+            self.con.commit()
+
+            print("Song deleted")
+            cursor.close()
+
+        except Exception as err:
+            print(err)
+
+    def search_song(self):
+        try:
+            sid = input("Song ID: ")
+
+            cursor = self.con.cursor()
+            cursor.execute("SELECT * FROM songs WHERE song_id=%s", (sid,))
+            row = cursor.fetchone()
+
+            if row:
+                print(row)
+            else:
+                print("Not found")
+
+            cursor.close()
+
+        except Exception as err:
+            print(err)
+
+    def view_songs_by_playlist(self):
+        try:
+            cursor = self.con.cursor()
+
+            cursor.execute("SELECT playlist_id, name FROM playlists")
+            print("Playlists:")
+            for row in cursor:
+                print(f"{row[0]} - {row[1]}")
+
+            pid = input("Enter Playlist ID: ")
+
+            query = """
+            SELECT title, channel, is_original, duration
+            FROM songs
+            WHERE playlist_id=%s
+            """
+            cursor.execute(query, (pid,))
+            results = cursor.fetchall()
+
+            if results:
+                for row in results:
+                    print(f"{row[0]} | {row[1]} | {row[2]} | {row[3]}")
+            else:
+                print("No songs found")
+
+            cursor.close()
+
+        except Exception as err:
+            print(err)
+
+    # ---------------- MENU ---------------- #
+
+    def menu(self):
+        while True:
+            print("""
+1. Add Playlist
+2. View Playlists
+3. Edit Playlist
+4. Delete Playlist
+5. Add Song
+6. View Songs
+7. Edit Song
+8. Delete Song
+9. Search Song
+10. View Songs by Playlist
+11. Exit
+""")
+
+            choice = input("Choice: ")
+
+            if choice == "1":
+                self.connect()
+                self.add_playlist()
+
+            elif choice == "2":
+                self.connect()
+                self.view_playlists()
+
+            elif choice == "3":
+                self.connect()
+                self.edit_playlist()
+
+            elif choice == "4":
+                self.connect()
+                self.delete_playlist()
+
+            elif choice == "5":
+                self.connect()
+                self.add_song()
+
+            elif choice == "6":
+                self.connect()
+                self.view_songs()
+
+            elif choice == "7":
+                self.connect()
+                self.edit_song()
+
+            elif choice == "8":
+                self.connect()
+                self.delete_song()
+
+            elif choice == "9":
+                self.connect()
+                self.search_song()
+
+            elif choice == "10":
+                self.connect()
+                self.view_songs_by_playlist()
+
+            elif choice == "11":
+                print("Goodbye")
+                break
 
 
-def main():
-   while True:
-       connect()
-       print("[1] Add New Record")
-       print("[2] Edit Record")
-       print("[3] Delete Record")
-       print("[4] Search Record")
-       print("[5] Display All Record")
-       choice = input("Enter your choice : ")
-
-       if choice == "1":
-           os.system('cls')
-           c = connect()
-           add(c)
-       elif choice == "2":
-           os.system('cls')
-           c = connect()
-           edit(c)
-       elif choice == "3":
-           os.system('cls')
-           c = connect()
-           delete(c)
-       elif choice == "3":
-           os.system('cls')
-           c = connect()
-           delete(c)
-       elif choice == "4":
-           os.system('cls')
-           c = connect()
-           search(c)
-       elif choice == "5":
-           os.system('cls')
-           c = connect()
-           searchAll(c)
-
-       x = input("Return to main menu [y/n]? ")
-       if x == 'y':
-           os.system('cls')
-           continue
-       else:
-           break
-
-       exit(0)
-
-
-main()
+if __name__ == "__main__":
+    db = PlaylistDB()
+    db.menu()

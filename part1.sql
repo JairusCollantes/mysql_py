@@ -1,4 +1,3 @@
-
 CREATE DATABASE IF NOT EXISTS playlist_db;
 USE playlist_db;
 
